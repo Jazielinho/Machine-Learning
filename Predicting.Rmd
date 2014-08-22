@@ -1,0 +1,110 @@
+---
+title: 'Prediction Model Assignment Write-up'
+author: "Jahaziel Ponce"
+date: "Thursday, August 21, 2014"
+output: html_document
+---
+
+## Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+## Download data:
+
+Load packages:
+
+```{r}
+library(caret)
+```
+
+Download data:
+
+```{r}
+if (!file.exists("pml-training.csv")) {
+    download.file("http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", 
+                  destfile = "pml-training.csv")
+}
+if (!file.exists("pml-testing.csv")) {
+    download.file("http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", 
+                  destfile = "pml-testing.csv")
+}
+```
+
+```{r}
+#Load Data train
+training <- read.csv("pml-training.csv", stringsAsFactors=FALSE)
+```
+
+## Getting and Cleaning the Data Set
+
+There are 160 columns in the Training Set, and we will be excluding columns with NA values.
+
+Cleaning data:
+
+```{r}
+NewTraining <- training
+NewTraining[ NewTraining == '' | NewTraining == 'NA'] <- NA
+indx <- which(colSums(is.na(NewTraining))!=0)
+NewTraining <- NewTraining[, -indx]
+NewTraining <- NewTraining[,-(1:7)]
+```
+
+## Creating train y test data
+
+```{r}
+InTraining  <- createDataPartition(y=NewTraining$classe,p=0.70,list=FALSE)
+data <- NewTraining
+NewTraining <- data[InTraining,]
+ValidateSet <- data[-InTraining,]
+```
+
+## Model Training
+
+Random Forest we will be using to train our Prediction Model set to predict the weight lifting quality in the Training Set.
+
+```{r}
+library(randomForest)
+# model fit using random forests
+Pmodel <- randomForest(as.factor(classe)~.,data=NewTraining)
+Pmodel
+```
+
+## Model Evaluation
+
+Now we evaluate our model results through confusion Matrix.
+
+```{r}
+#Predictions
+predict <- predict(Pmodel, ValidateSet)
+# evaluate the model
+error <- confusionMatrix(ValidateSet$classe, predict);
+error
+```
+
+Model Accuracy as tested over Validation set = 99.9%
+
+## Model Test
+
+Finally, we proceed with predicting the new values in the testing csv provided
+
+```{r}
+#Load Data test
+training <- read.csv("pml-testing.csv", stringsAsFactors=FALSE)
+#Predicting
+prediccion <- predict(Pmodel, ValidateSet)
+```
+
+### Generating Answers Files to Submit for Assignment
+
+The following function to create the files to answers the Prediction Assignment Submission:
+
+```{r}
+write_files = function(x){
+  for(i in 1:30){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+write_files(prediccion)
+```
