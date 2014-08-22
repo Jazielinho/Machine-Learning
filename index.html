@@ -1,0 +1,233 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Prediction Model Assignment Write-up by Jazielinho</title>
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script src="javascripts/main.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+  </head>
+  <body>
+
+      <header>
+        <h1>Prediction Model Assignment Write-up</h1>
+        <p>Machine Learning</p>
+      </header>
+
+      <div id="banner">
+        <span id="logo"></span>
+
+        <a href="https://github.com/Jazielinho/Machine-Learning" class="button fork"><strong>View On GitHub</strong></a>
+        <div class="downloads">
+          <span>Downloads:</span>
+          <ul>
+            <li><a href="https://github.com/Jazielinho/Machine-Learning/zipball/master" class="button">ZIP</a></li>
+            <li><a href="https://github.com/Jazielinho/Machine-Learning/tarball/master" class="button">TAR</a></li>
+          </ul>
+        </div>
+      </div><!-- end banner -->
+
+    <div class="wrapper">
+      <nav>
+        <ul></ul>
+      </nav>
+      <section>
+        <h2>
+<a name="background" class="anchor" href="#background"><span class="octicon octicon-link"></span></a>Background</h2>
+
+<p>Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: <a href="http://groupware.les.inf.puc-rio.br/har">http://groupware.les.inf.puc-rio.br/har</a> (see the section on the Weight Lifting Exercise Dataset).</p>
+
+<h2>
+<a name="download-data" class="anchor" href="#download-data"><span class="octicon octicon-link"></span></a>Download data:</h2>
+
+<p>Load packages:</p>
+
+<div class="highlight highlight-r"><pre><span class="kn">library</span><span class="p">(</span>caret<span class="p">)</span>
+</pre></div>
+
+<pre><code>## 
+## Attaching package: 'caret'
+## 
+## The following object is masked from 'package:survival':
+## 
+##     cluster
+</code></pre>
+
+<p>Download data:</p>
+
+<div class="highlight highlight-r"><pre><span class="kr">if</span> <span class="p">(</span><span class="o">!</span><span class="kp">file.exists</span><span class="p">(</span><span class="s">"pml-training.csv"</span><span class="p">))</span> <span class="p">{</span>
+    download.file<span class="p">(</span><span class="s">"http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"</span><span class="p">,</span> 
+                  destfile <span class="o">=</span> <span class="s">"pml-training.csv"</span><span class="p">)</span>
+<span class="p">}</span>
+<span class="kr">if</span> <span class="p">(</span><span class="o">!</span><span class="kp">file.exists</span><span class="p">(</span><span class="s">"pml-testing.csv"</span><span class="p">))</span> <span class="p">{</span>
+    download.file<span class="p">(</span><span class="s">"http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"</span><span class="p">,</span> 
+                  destfile <span class="o">=</span> <span class="s">"pml-testing.csv"</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+
+<div class="highlight highlight-r"><pre><span class="c1">#Load Data train</span>
+training <span class="o">&lt;-</span> read.csv<span class="p">(</span><span class="s">"pml-training.csv"</span><span class="p">,</span> stringsAsFactors<span class="o">=</span><span class="kc">FALSE</span><span class="p">)</span>
+</pre></div>
+
+<h2>
+<a name="getting-and-cleaning-the-data-set" class="anchor" href="#getting-and-cleaning-the-data-set"><span class="octicon octicon-link"></span></a>Getting and Cleaning the Data Set</h2>
+
+<p>There are 160 columns in the Training Set, and we will be excluding columns with NA values.</p>
+
+<p>Cleaning data:</p>
+
+<div class="highlight highlight-r"><pre>NewTraining <span class="o">&lt;-</span> training
+NewTraining<span class="p">[</span> NewTraining <span class="o">==</span> <span class="s">''</span> <span class="o">|</span> NewTraining <span class="o">==</span> <span class="s">'NA'</span><span class="p">]</span> <span class="o">&lt;-</span> <span class="kc">NA</span>
+indx <span class="o">&lt;-</span> <span class="kp">which</span><span class="p">(</span><span class="kp">colSums</span><span class="p">(</span><span class="kp">is.na</span><span class="p">(</span>NewTraining<span class="p">))</span><span class="o">!=</span><span class="m">0</span><span class="p">)</span>
+NewTraining <span class="o">&lt;-</span> NewTraining<span class="p">[,</span> <span class="o">-</span>indx<span class="p">]</span>
+NewTraining <span class="o">&lt;-</span> NewTraining<span class="p">[,</span><span class="o">-</span><span class="p">(</span><span class="m">1</span><span class="o">:</span><span class="m">7</span><span class="p">)]</span>
+</pre></div>
+
+<h2>
+<a name="creating-train-y-test-data" class="anchor" href="#creating-train-y-test-data"><span class="octicon octicon-link"></span></a>Creating train y test data</h2>
+
+<div class="highlight highlight-r"><pre>InTraining  <span class="o">&lt;-</span> createDataPartition<span class="p">(</span>y<span class="o">=</span>NewTraining<span class="o">$</span>classe<span class="p">,</span>p<span class="o">=</span><span class="m">0.70</span><span class="p">,</span><span class="kt">list</span><span class="o">=</span><span class="kc">FALSE</span><span class="p">)</span>
+data <span class="o">&lt;-</span> NewTraining
+NewTraining <span class="o">&lt;-</span> data<span class="p">[</span>InTraining<span class="p">,]</span>
+ValidateSet <span class="o">&lt;-</span> data<span class="p">[</span><span class="o">-</span>InTraining<span class="p">,]</span>
+</pre></div>
+
+<h2>
+<a name="model-training" class="anchor" href="#model-training"><span class="octicon octicon-link"></span></a>Model Training</h2>
+
+<p>Random Forest we will be using to train our Prediction Model set to predict the weight lifting quality in the Training Set.</p>
+
+<div class="highlight highlight-r"><pre><span class="kn">library</span><span class="p">(</span>randomForest<span class="p">)</span>
+</pre></div>
+
+<pre><code>## randomForest 4.6-10
+## Type rfNews() to see new features/changes/bug fixes.
+## 
+## Attaching package: 'randomForest'
+## 
+## The following object is masked from 'package:Hmisc':
+## 
+##     combine
+</code></pre>
+
+<div class="highlight highlight-r"><pre><span class="c1"># model fit using random forests</span>
+Pmodel <span class="o">&lt;-</span> randomForest<span class="p">(</span><span class="kp">as.factor</span><span class="p">(</span>classe<span class="p">)</span><span class="o">~</span><span class="m">.</span><span class="p">,</span>data<span class="o">=</span>NewTraining<span class="p">)</span>
+Pmodel
+</pre></div>
+
+<pre><code>## 
+## Call:
+##  randomForest(formula = as.factor(classe) ~ ., data = NewTraining) 
+##                Type of random forest: classification
+##                      Number of trees: 500
+## No. of variables tried at each split: 7
+## 
+##         OOB estimate of  error rate: 0.47%
+## Confusion matrix:
+##      A    B    C    D    E class.error
+## A 3906    0    0    0    0    0.000000
+## B   10 2642    6    0    0    0.006020
+## C    0   10 2385    1    0    0.004591
+## D    0    0   25 2224    3    0.012433
+## E    0    0    2    7 2516    0.003564
+</code></pre>
+
+<h2>
+<a name="model-evaluation" class="anchor" href="#model-evaluation"><span class="octicon octicon-link"></span></a>Model Evaluation</h2>
+
+<p>Now we evaluate our model results through confusion Matrix.</p>
+
+<div class="highlight highlight-r"><pre><span class="c1">#Predictions</span>
+predict <span class="o">&lt;-</span> predict<span class="p">(</span>Pmodel<span class="p">,</span> ValidateSet<span class="p">)</span>
+<span class="c1"># evaluate the model</span>
+error <span class="o">&lt;-</span> confusionMatrix<span class="p">(</span>ValidateSet<span class="o">$</span>classe<span class="p">,</span> predict<span class="p">);</span>
+</pre></div>
+
+<pre><code>## 
+## Attaching package: 'e1071'
+## 
+## The following object is masked from 'package:Hmisc':
+## 
+##     impute
+</code></pre>
+
+<div class="highlight highlight-r"><pre>error
+</pre></div>
+
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 1671    2    0    0    1
+##          B    5 1132    2    0    0
+##          C    0    3 1021    2    0
+##          D    0    0   12  952    0
+##          E    0    0    1    2 1079
+## 
+## Overall Statistics
+##                                         
+##                Accuracy : 0.995         
+##                  95% CI : (0.993, 0.997)
+##     No Information Rate : 0.285         
+##     P-Value [Acc &gt; NIR] : &lt;2e-16        
+##                                         
+##                   Kappa : 0.994         
+##  Mcnemar's Test P-Value : NA            
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity             0.997    0.996    0.986    0.996    0.999
+## Specificity             0.999    0.999    0.999    0.998    0.999
+## Pos Pred Value          0.998    0.994    0.995    0.988    0.997
+## Neg Pred Value          0.999    0.999    0.997    0.999    1.000
+## Prevalence              0.285    0.193    0.176    0.162    0.184
+## Detection Rate          0.284    0.192    0.173    0.162    0.183
+## Detection Prevalence    0.284    0.194    0.174    0.164    0.184
+## Balanced Accuracy       0.998    0.997    0.992    0.997    0.999
+</code></pre>
+
+<p>Model Accuracy as tested over Validation set = 99.9%</p>
+
+<h2>
+<a name="model-test" class="anchor" href="#model-test"><span class="octicon octicon-link"></span></a>Model Test</h2>
+
+<p>Finally, we proceed with predicting the new values in the testing csv provided</p>
+
+<div class="highlight highlight-r"><pre><span class="c1">#Load Data test</span>
+training <span class="o">&lt;-</span> read.csv<span class="p">(</span><span class="s">"pml-testing.csv"</span><span class="p">,</span> stringsAsFactors<span class="o">=</span><span class="kc">FALSE</span><span class="p">)</span>
+<span class="c1">#Predicting</span>
+prediccion <span class="o">&lt;-</span> predict<span class="p">(</span>Pmodel<span class="p">,</span> ValidateSet<span class="p">)</span>
+</pre></div>
+
+<h3>
+<a name="generating-answers-files-to-submit-for-assignment" class="anchor" href="#generating-answers-files-to-submit-for-assignment"><span class="octicon octicon-link"></span></a>Generating Answers Files to Submit for Assignment</h3>
+
+<p>The following function to create the files to answers the Prediction Assignment Submission:</p>
+
+<div class="highlight highlight-r"><pre>write_files <span class="o">=</span> <span class="kr">function</span><span class="p">(</span>x<span class="p">){</span>
+  <span class="kr">for</span><span class="p">(</span>i <span class="kr">in</span> <span class="m">1</span><span class="o">:</span><span class="m">30</span><span class="p">){</span>
+    filename <span class="o">=</span> <span class="kp">paste0</span><span class="p">(</span><span class="s">"problem_id_"</span><span class="p">,</span>i<span class="p">,</span><span class="s">".txt"</span><span class="p">)</span>
+    write.table<span class="p">(</span>x<span class="p">[</span>i<span class="p">],</span>file<span class="o">=</span>filename<span class="p">,</span>quote<span class="o">=</span><span class="kc">FALSE</span><span class="p">,</span>row.names<span class="o">=</span><span class="kc">FALSE</span><span class="p">,</span>col.names<span class="o">=</span><span class="kc">FALSE</span><span class="p">)</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+write_files<span class="p">(</span>prediccion<span class="p">)</span>
+</pre></div>
+      </section>
+      <footer>
+        <p>Project maintained by <a href="https://github.com/Jazielinho">Jazielinho</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://twitter.com/michigangraham">mattgraham</a></small></p>
+      </footer>
+    </div>
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+    
+  </body>
+</html>
